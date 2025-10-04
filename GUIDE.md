@@ -11,15 +11,18 @@
 ## 📑 Mục Lục
 
 1. [Tổng Quan Kiến Trúc](#1-tổng-quan-kiến-trúc)
-2. [Entry Point & Main App](#2-entry-point--main-app)
-3. [NavBar Component](#3-navbar-component)
-4. [GaussianViewer Component](#4-gaussianviewer-component)
-5. [React Hooks Chi Tiết](#5-react-hooks-chi-tiết)
-6. [State Management](#6-state-management)
-7. [TypeScript Patterns](#7-typescript-patterns)
-8. [Styling với Tailwind CSS](#8-styling-với-tailwind-css)
-9. [Performance Optimization](#9-performance-optimization)
-10. [Best Practices](#10-best-practices)
+2. [Entry Point & Routing](#2-entry-point--routing)
+3. [Pages Components](#3-pages-components)
+4. [NavBar Component](#4-navbar-component)
+5. [GaussianViewer Component](#5-gaussianviewer-component)
+6. [LibraryItem Component](#6-libraryitem-component)
+7. [Hugging Face Integration](#7-hugging-face-integration)
+8. [React Hooks Chi Tiết](#8-react-hooks-chi-tiết)
+9. [State Management](#9-state-management)
+10. [TypeScript Patterns](#10-typescript-patterns)
+11. [Styling với Tailwind CSS](#11-styling-với-tailwind-css)
+12. [Performance Optimization](#12-performance-optimization)
+13. [Best Practices](#13-best-practices)
 
 ---
 
@@ -28,24 +31,57 @@
 ### 1.1 Component Hierarchy
 
 ```
-App (Root Component)
-├── NavBar (Sticky Navigation)
-│   ├── Logo Section
-│   ├── Brand Name
-│   └── Action Buttons (Home, Info, Settings)
-│
-└── Main Content
-    ├── Hero Section (Title + Description)
-    ├── GaussianViewer (3D Viewer)
-    │   ├── Canvas (WebGL Rendering)
-    │   ├── Status Overlay (Loading/Error)
-    │   ├── Control Panel
-    │   │   ├── Upload Button
-    │   │   ├── Auto-rotate Toggle
-    │   │   └── Fullscreen Button
-    │   └── Model Info Display
+App (Root Component with Routing)
+├── Routes
+    ├── Home Page (/)
+    │   ├── NavBar (Sticky Navigation)
+    │   │   ├── Logo Section
+    │   │   ├── Brand Name
+    │   │   └── Navigation Links (Home, Library, Reconstruction)
+    │   │
+    │   └── Main Content
+    │       ├── Hero Section (Title + Description)
+    │       ├── GaussianViewer (3D Viewer)
+    │       │   ├── Canvas (WebGL Rendering)
+    │       │   ├── Status Overlay (Loading/Error)
+    │       │   ├── Control Panel
+    │       │   │   ├── Upload Button
+    │       │   │   ├── Auto-rotate Toggle
+    │       │   │   └── Fullscreen Button
+    │       │   └── Model Info Display
+    │       │
+    │       └── Info Cards (3 feature cards)
     │
-    └── Info Cards (3 feature cards)
+    ├── Library Page (/library)
+    │   ├── NavBar
+    │   └── Main Content
+    │       ├── Left Sidebar (1/3 width)
+    │       │   └── LibraryItem Component
+    │       │       ├── Sample Library Section
+    │       │       │   ├── Refresh Button
+    │       │       │   └── Model List (.splat, .ply files)
+    │       │       │
+    │       │       └── User Library Section
+    │       │           └── User Models (requires auth)
+    │       │
+    │       └── Right Viewer (2/3 width)
+    │           └── GaussianViewer (Selected Model)
+    │
+    └── Reconstruction Page (/reconstruction)
+        ├── NavBar
+        └── Main Content
+            ├── Upload Section
+            │   ├── Drag & Drop Zone
+            │   ├── File Input
+            │   └── Browse Button
+            │
+            ├── File List Section
+            │   ├── Individual Files with Size
+            │   ├── Remove File Buttons
+            │   └── Clear All Button
+            │
+            ├── Submit Button
+            └── Status Info Cards
 ```
 
 ### 1.2 Data Flow
@@ -76,19 +112,22 @@ UI Updates
 
 ---
 
-## 2. Entry Point & Main App
+## 2. Entry Point & Routing
 
-### 2.1 main.tsx - Entry Point
+### 2.1 main.tsx - Entry Point with BrowserRouter
 
 ```tsx
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
   </StrictMode>,
 )
 ```
@@ -98,6 +137,220 @@ createRoot(document.getElementById('root')!).render(
 1. **StrictMode**: 
    - React component wrapper giúp phát hiện vấn đề trong development
    - Kích hoạt warnings về unsafe lifecycles, deprecated APIs
+   - Chạy double-render để kiểm tra side effects
+
+2. **BrowserRouter**:
+   - Cung cấp routing context cho toàn bộ ứng dụng
+   - Sử dụng HTML5 History API để đồng bộ UI với URL
+   - Cho phép navigation mà không reload trang
+
+3. **createRoot**:
+   - React 18+ API để tạo root rendering
+   - Cho phép concurrent features (Suspense, Transitions)
+
+### 2.2 App.tsx - Routing Configuration
+
+```tsx
+import { Routes, Route } from 'react-router-dom'
+import { Home } from './pages/Home'
+import { Library } from './pages/Library'
+import { Reconstruction } from './pages/Reconstruction'
+import './App.css'
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/library" element={<Library />} />
+      <Route path="/reconstruction" element={<Reconstruction />} />
+    </Routes>
+  )
+}
+
+export default App
+```
+
+**Giải thích:**
+
+1. **Routes Component**:
+   - Container cho tất cả các route
+   - Tự động chọn route phù hợp nhất với URL hiện tại
+   - Hỗ trợ nested routes và dynamic routing
+
+2. **Route Component**:
+   - **path**: URL pattern cần match
+   - **element**: Component sẽ render khi path match
+   - Route `/` là trang chủ (Home)
+   - Route `/library` là trang thư viện mô hình
+   - Route `/reconstruction` là trang tải ảnh lên
+
+3. **Client-side Navigation**:
+   - Không reload trang khi chuyển route
+   - Giữ nguyên state và context
+   - Nhanh hưn server-side navigation
+
+**Pattern: Routing Best Practices**
+
+✅ **Tốt - Tách biệt pages và components:**
+```tsx
+// pages/ folder - Full page components
+<Route path="/library" element={<Library />} />
+
+// components/ folder - Reusable components
+<LibraryItem onSelect={...} />
+```
+
+❌ **Xấu - Mix routing logic vào components:**
+```tsx
+// Đừng viết routing logic trong components
+function MyComponent() {
+  if (window.location.pathname === '/library') {
+    return <Library />
+  }
+}
+```
+
+---
+
+## 3. Pages Components
+
+### 3.1 Home Page
+
+**File**: `src/pages/Home.tsx`
+
+```tsx
+import { NavBar } from '../components/NavBar'
+import { GaussianViewer } from '../components/GaussianViewer'
+
+export const Home = () => {
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-900 to-black">
+      <NavBar />
+      <main className="container mx-auto px-4 py-4">
+        <div className="text-center mb-4">
+          <h1 className="text-2xl md:text-3xl font-bold">
+            3D Gaussian Splatting Viewer
+          </h1>
+        </div>
+        <GaussianViewer 
+          defaultModelUrl="https://huggingface.co/..."
+        />
+      </main>
+    </div>
+  )
+}
+```
+
+**Chức năng:**
+- Trang chủ với 3D viewer mặc định
+- Hiển thị mô hình Bonsai sample
+- Cho phép upload mô hình mới
+- Full viewer controls
+
+### 3.2 Library Page
+
+**File**: `src/pages/Library.tsx`
+
+```tsx
+import { useState } from 'react'
+import { NavBar } from '../components/NavBar'
+import { GaussianViewer } from '../components/GaussianViewer'
+import { LibraryItem } from '../components/LibraryItem'
+
+export const Library = () => {
+  const [selectedModel, setSelectedModel] = useState<string>('')
+
+  return (
+    <div className="min-h-screen">
+      <NavBar />
+      <div className="flex">
+        {/* Left Sidebar - Model List */}
+        <div className="w-1/3">
+          <LibraryItem onSelectModel={setSelectedModel} />
+        </div>
+        
+        {/* Right Main Area - Viewer */}
+        <div className="w-2/3">
+          {selectedModel ? (
+            <GaussianViewer defaultModelUrl={selectedModel} />
+          ) : (
+            <div>Select a model from library</div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+**Chức năng:**
+- Split layout: List bên trái, viewer bên phải
+- Hiển thị danh sách mô hình từ Hugging Face
+- Click để xem mô hình
+- State management cho model được chọn
+
+### 3.3 Reconstruction Page
+
+**File**: `src/pages/Reconstruction.tsx`
+
+```tsx
+import { useState } from 'react'
+import type { ChangeEvent } from 'react'
+
+export const Reconstruction = () => {
+  const [files, setFiles] = useState<File[]>([])
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setFiles(prev => [...prev, ...Array.from(e.target.files!)])
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    
+    const droppedFiles = Array.from(e.dataTransfer.files)
+    setFiles(prev => [...prev, ...droppedFiles])
+  }
+
+  const handleSubmit = () => {
+    console.log('Submitting files:', files)
+    // TODO: API integration
+  }
+
+  return (
+    <div>
+      <NavBar />
+      <div 
+        onDrop={handleDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className={isDragging ? 'border-blue-500' : ''}
+      >
+        <input 
+          type="file" 
+          multiple 
+          accept="image/*"
+          onChange={handleFileSelect}
+        />
+        <button onClick={handleSubmit}>Submit</button>
+      </div>
+    </div>
+  )
+}
+```
+
+**Chức năng:**
+- Drag & drop file upload
+- Multiple file selection
+- File list với size display
+- Remove individual files
+- Submit button (API ready)
+
+---
+
+## 4. NavBar Component
    - Không ảnh hưởng production build
 
 2. **createRoot**:
@@ -165,7 +418,7 @@ function App() {
 
 ---
 
-## 3. NavBar Component
+## 5. GaussianViewer Component
 
 ### 3.1 Component Structure
 
@@ -318,7 +571,7 @@ useEffect(() => {
 
 ---
 
-## 4. GaussianViewer Component
+## 8. React Hooks Chi Tiết
 
 ### 4.1 Component Overview
 
@@ -850,9 +1103,9 @@ useEffect(() => {
 
 ---
 
-## 6. State Management
+## 9. State Management
 
-### 6.1 Local State (useState)
+### 9.1 Local State (useState)
 
 **Khi Nào Dùng:**
 - State chỉ dùng trong 1 component
@@ -922,9 +1175,9 @@ interface Props {
 
 ---
 
-## 7. TypeScript Patterns
+## 10. TypeScript Patterns
 
-### 7.1 Component Props
+### 10.1 Component Props
 
 ```tsx
 // Interface definition
@@ -1001,7 +1254,228 @@ const isString = (value: unknown): value is string => {
 
 ---
 
-## 8. Styling với Tailwind CSS
+## 6. LibraryItem Component
+
+### 6.1 Component Structure
+
+**File**: `src/components/LibraryItem.tsx`
+
+```tsx
+import { useEffect, useState } from 'react'
+import { HuggingFaceDatasetManager } from '../context/HuggingFaceDatasetManager'
+
+export interface LibraryItemProps {
+  onSelectModel: (url: string) => void
+}
+
+export const LibraryItem = ({ onSelectModel }: LibraryItemProps) => {
+  const [files, setFiles] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<string>('')
+  
+  const manager = new HuggingFaceDatasetManager()
+  
+  useEffect(() => {
+    loadFiles()
+  }, [])
+  
+  const loadFiles = async () => {
+    setLoading(true)
+    try {
+      const fileList = await manager.ListFolderFile('Gaussian')
+      const splatFiles = fileList.filter(f => 
+        f.endsWith('.splat') || f.endsWith('.ply')
+      )
+      setFiles(splatFiles)
+    } catch (error) {
+      console.error('Error loading files:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  
+  const handleSelectFile = (file: string) => {
+    setSelectedFile(file)
+    const url = `https://huggingface.co/datasets/XuanHuy224/GaussianSample/resolve/main/Gaussian/${file}`
+    onSelectModel(url)
+  }
+  
+  return (
+    <div>
+      <button onClick={loadFiles}>Refresh</button>
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <ul>
+          {files.map(file => (
+            <li 
+              key={file}
+              onClick={() => handleSelectFile(file)}
+              className={selectedFile === file ? 'selected' : ''}
+            >
+              {file}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+```
+
+**Giải thích:**
+
+1. **Props Interface**:
+   - `onSelectModel`: Callback khi user chọn model
+   - Type-safe với TypeScript
+
+2. **State Management**:
+   - `files`: Danh sách file từ Hugging Face
+   - `loading`: Trạng thái loading
+   - `selectedFile`: File đang được chọn
+
+3. **useEffect Hook**:
+   - Load files khi component mount
+   - Empty dependency array `[]` = chỉ chạy 1 lần
+
+4. **Async Data Fetching**:
+   - `async/await` pattern
+   - Try-catch error handling
+   - Finally block để cleanup loading state
+
+5. **File Filtering**:
+   - Chỉ hiển thị file `.splat` và `.ply`
+   - Filter method của array
+
+6. **Event Handlers**:
+   - `handleSelectFile`: Xử lý click vào file
+   - Construct URL từ file name
+   - Call parent callback với URL
+
+---
+
+## 7. Hugging Face Integration
+
+### 7.1 HuggingFaceDatasetManager Class
+
+**File**: `src/context/HuggingFaceDatasetManager.ts`
+
+```tsx
+import { listFiles, uploadFile } from '@huggingface/hub'
+
+export class HuggingFaceDatasetManager {
+  private repoId = 'XuanHuy224/GaussianSample'
+  private apiKey = import.meta.env.VITE_HUGGING_FACE_API_KEY
+  
+  /**
+   * List all files in dataset recursively
+   */
+  async listAllFiles(): Promise<string[]> {
+    try {
+      const files = []
+      for await (const file of listFiles({
+        repo: { type: 'dataset', name: this.repoId },
+        credentials: { accessToken: this.apiKey }
+      })) {
+        files.push(file.path)
+      }
+      return files
+    } catch (error) {
+      console.error('Error listing files:', error)
+      return []
+    }
+  }
+  
+  /**
+   * List files in specific folder
+   */
+  async ListFolderFile(folderName: string): Promise<string[]> {
+    try {
+      const allFiles = await this.listAllFiles()
+      return allFiles
+        .filter(path => path.startsWith(folderName + '/'))
+        .map(path => path.replace(folderName + '/', ''))
+    } catch (error) {
+      console.error('Error listing folder files:', error)
+      return []
+    }
+  }
+  
+  /**
+   * Upload file to dataset
+   */
+  async uploadFile(filePath: string, fileContent: Blob): Promise<boolean> {
+    try {
+      await uploadFile({
+        repo: { type: 'dataset', name: this.repoId },
+        credentials: { accessToken: this.apiKey },
+        file: {
+          path: filePath,
+          content: fileContent
+        }
+      })
+      return true
+    } catch (error) {
+      console.error('Error uploading file:', error)
+      return false
+    }
+  }
+}
+```
+
+**Giải thích:**
+
+1. **Class Structure**:
+   - Private properties: `repoId`, `apiKey`
+   - Public methods cho API operations
+   - Encapsulation pattern
+
+2. **Environment Variables**:
+   - `import.meta.env.VITE_HUGGING_FACE_API_KEY`
+   - Vite-specific env syntax
+   - Secure API key storage
+
+3. **Async Iterators**:
+   - `for await...of` loop
+   - Generator pattern từ Hugging Face SDK
+   - Efficient memory usage
+
+4. **Error Handling**:
+   - Try-catch cho mỗi method
+   - Console.error để debug
+   - Return empty array/false khi error
+
+5. **File Operations**:
+   - `listAllFiles()`: Get all files recursively
+   - `ListFolderFile()`: Filter by folder
+   - `uploadFile()`: Upload new file
+
+6. **Path Manipulation**:
+   - String methods: `startsWith()`, `replace()`
+   - Filter array dựa trên path pattern
+
+### 7.2 Environment Setup
+
+**File**: `.env`
+
+```bash
+VITE_HUGGING_FACE_API_KEY=hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Vite Environment Variables:**
+
+- Prefix: `VITE_` để expose to client
+- Access: `import.meta.env.VITE_*`
+- Type-safe với `vite-env.d.ts`
+
+**Security Note:**
+- Không commit `.env` file
+- Add `.env` vào `.gitignore`
+- Use different keys cho dev/prod
+
+---
+
+## 8. React Hooks Chi Tiết
 
 ### 8.1 Utility Classes
 
@@ -1142,9 +1616,9 @@ const HeavyComponent = lazy(() => import('./HeavyComponent'));
 
 ---
 
-## 10. Best Practices
+## 13. Best Practices
 
-### 10.1 Component Organization
+### 13.1 Component Organization
 
 ```tsx
 export const MyComponent = () => {

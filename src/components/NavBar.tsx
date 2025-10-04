@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 
 /**
  * NavBar Component
@@ -9,9 +10,11 @@ import { useState, useEffect } from "react";
  * - Glassmorphism effect with backdrop blur
  * - Responsive design for different screen sizes
  * - Smooth hover animations
+ * - Active route highlighting
  */
 export const NavBar = () => {
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
 
   // Handle scroll event to change navbar appearance
   useEffect(() => {
@@ -48,7 +51,7 @@ export const NavBar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo and Brand Section */}
-          <div className="flex items-center gap-2 group cursor-pointer">
+          <Link to="/" className="flex items-center gap-2 group cursor-pointer">
             <div
               className="
                 relative w-10 h-10 rounded-lg 
@@ -97,23 +100,27 @@ export const NavBar = () => {
                 3D Gaussian Splatting
               </span>
             </div>
-          </div>
+          </Link>
 
           {/* Navigation Items */}
           <div className="flex items-center gap-4">
             {/* Home Button */}
-            <button
-              className="
+            <Link
+              to="/"
+              className={`
                 px-4 py-2 rounded-lg
-                bg-blue-500/10 text-blue-400
-                border border-blue-500/20
-                hover:bg-blue-500/20 hover:border-blue-500/30
-                hover:shadow-lg hover:shadow-blue-500/20
+                border
+                hover:shadow-lg
                 active:scale-95
                 transition-all duration-200
                 flex items-center gap-2
                 font-medium text-sm
-              "
+                ${
+                  location.pathname === "/"
+                    ? "bg-blue-500/20 text-blue-300 border-blue-500/40 shadow-blue-500/20"
+                    : "bg-blue-500/10 text-blue-400 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/30 hover:shadow-blue-500/20"
+                }
+              `}
             >
               <svg
                 className="w-4 h-4 flex-shrink-0"
@@ -129,7 +136,75 @@ export const NavBar = () => {
                 />
               </svg>
               Home
-            </button>
+            </Link>
+
+            {/* Library Button */}
+            <Link
+              to="/library"
+              className={`
+                px-4 py-2 rounded-lg
+                border
+                hover:shadow-lg
+                active:scale-95
+                transition-all duration-200
+                flex items-center gap-2
+                font-medium text-sm
+                ${
+                  location.pathname === "/library"
+                    ? "bg-green-500/20 text-green-300 border-green-500/40 shadow-green-500/20"
+                    : "bg-green-500/10 text-green-400 border-green-500/20 hover:bg-green-500/20 hover:border-green-500/30 hover:shadow-green-500/20"
+                }
+              `}
+            >
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              Library
+            </Link>
+
+            {/* Reconstruction Button */}
+            <Link
+              to="/reconstruction"
+              className={`
+                px-4 py-2 rounded-lg
+                border
+                hover:shadow-lg
+                active:scale-95
+                transition-all duration-200
+                flex items-center gap-2
+                font-medium text-sm
+                ${
+                  location.pathname === "/reconstruction"
+                    ? "bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-purple-500/20"
+                    : "bg-purple-500/10 text-purple-400 border-purple-500/20 hover:bg-purple-500/20 hover:border-purple-500/30 hover:shadow-purple-500/20"
+                }
+              `}
+            >
+              <svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              Reconstruction
+            </Link>
 
             {/* Info Button */}
             <button
