@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import * as SPLAT from "gsplat";
+import { HuggingFaceDatasetManager } from "../context/HuggingFaceDatasetManager";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Status types for the viewer
@@ -49,6 +51,12 @@ export const GaussianViewer = ({
   const [autoRotate, setAutoRotate] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [modelInfo, setModelInfo] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string>("");
+
+  // Authentication and HuggingFace manager
+  const { user, isAuthenticated } = useAuth();
+  const manager = new HuggingFaceDatasetManager();
 
   /**
    * Initialize the 3D renderer and controls, and start animation loop
@@ -184,6 +192,61 @@ export const GaussianViewer = ({
 
     const file = files[0];
     setCurrentFile(file);
+    setSaveMessage(""); // Clear previous save message
+  };
+
+  /**
+   * Save current file to user's Hugging Face folder
+   */
+  const handleSaveToLibrary = async () => {
+    if (!currentFile || !isAuthenticated || !user?.username) {
+      setSaveMessage("Please login and upload a file first");
+      return;
+    }
+
+    // Only allow PLY and SPLAT files
+    if (
+      !currentFile.name.endsWith(".ply") &&
+      !currentFile.name.endsWith(".splat")
+    ) {
+      setSaveMessage("Only .ply and .splat files can be saved");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage("Saving to your library...");
+
+    try {
+      // Create file path: username/filename
+      const filePath = `${user.username}/${currentFile.name}`;
+
+      console.log(`🔹 Saving file to: ${filePath}`);
+
+      // Upload file to Hugging Face
+      await manager.uploadFile(filePath, currentFile);
+
+      setSaveMessage(`✅ Saved to your library!`);
+      console.log(`✅ File saved successfully: ${filePath}`);
+
+      // Clear message after 3 seconds
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("❌ Error saving file:", error);
+      setSaveMessage(
+        `❌ Save failed: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setSaveMessage("");
+      }, 5000);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   /**
@@ -343,6 +406,52 @@ export const GaussianViewer = ({
           />
         </label>
 
+        {/* Save to Library Button */}
+        {status === "success" && currentFile && isAuthenticated && (
+          <button
+            onClick={handleSaveToLibrary}
+            disabled={isSaving}
+            className={`
+              h-10 px-4 rounded-lg text-sm font-semibold
+              flex items-center gap-2
+              transition-all duration-200
+              active:scale-95
+              ${
+                isSaving
+                  ? "bg-orange-500/20 text-orange-400 border border-orange-500/30 cursor-not-allowed"
+                  : "bg-purple-500/20 text-purple-400 border border-purple-500/30 hover:bg-purple-500/30 hover:text-purple-300"
+              }
+            `}
+            title="Save to your library"
+          >
+            <svg
+              className={`w-4 h-4 flex-shrink-0 ${
+                isSaving ? "animate-spin" : ""
+              }`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              {isSaving ? (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              ) : (
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12"
+                />
+              )}
+            </svg>
+            {isSaving ? "Saving..." : "Save"}
+          </button>
+        )}
+
         {/* Auto-rotate Toggle */}
         {status === "success" && (
           <button
@@ -434,6 +543,28 @@ export const GaussianViewer = ({
           "
         >
           {modelInfo}
+        </div>
+      )}
+
+      {/* Save Message Display */}
+      {saveMessage && (
+        <div
+          className={`
+            absolute top-4 right-4 
+            bg-gray-900/90 backdrop-blur-sm 
+            px-3 py-1.5 rounded-lg 
+            border border-gray-800/50
+            text-xs font-medium
+            ${
+              saveMessage.includes("✅")
+                ? "text-green-400 border-green-500/30"
+                : saveMessage.includes("❌")
+                ? "text-red-400 border-red-500/30"
+                : "text-orange-400 border-orange-500/30"
+            }
+          `}
+        >
+          {saveMessage}
         </div>
       )}
     </div>

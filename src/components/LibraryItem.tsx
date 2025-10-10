@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { HuggingFaceDatasetManager } from "../context/HuggingFaceDatasetManager";
+import { useAuth } from "../context/AuthContext";
 
 /**
  * Props for LibraryItem component
@@ -31,8 +32,13 @@ export const LibraryItem = ({ onSelectModel }: LibraryItemProps) => {
   const [files, setFiles] = useState<File[]>([]);
   const [userFiles, setUserFiles] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUserFiles, setIsLoadingUserFiles] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [userError, setUserError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Get authenticated user
+  const { user, isAuthenticated } = useAuth();
 
   // Initialize Hugging Face manager
   const manager = new HuggingFaceDatasetManager();
@@ -62,15 +68,11 @@ export const LibraryItem = ({ onSelectModel }: LibraryItemProps) => {
             url: constructFileUrl(file.path),
           }));
 
-      // Fetch sample files
+      // Fetch sample filesquit_game()
       const fileList = await manager.ListFolderFile(folderName);
       const splatFiles = processSplatFiles(fileList);
 
       setFiles(splatFiles);
-
-      // TODO: Fetch user-specific files when authentication is implemented
-      // For now, userFiles remains empty
-      setUserFiles([]);
     } catch (error) {
       console.error("Error fetching files:", error);
       setError("Failed to fetch files. Please try again later.");
@@ -80,11 +82,63 @@ export const LibraryItem = ({ onSelectModel }: LibraryItemProps) => {
   };
 
   /**
-   * Load files on component mount
+   * Fetch user-specific files based on username
+   */
+  const fetchUserFiles = async (username: string) => {
+    try {
+      setIsLoadingUserFiles(true);
+      setUserError(null);
+
+      const BASE_URL =
+        "https://huggingface.co/datasets/XuanHuy224/GaussianSample/resolve/main";
+
+      const constructFileUrl = (filename: string) => `${BASE_URL}/${filename}`;
+
+      const processSplatFiles = (files: Array<{ path: string }>) =>
+        files
+          .filter(
+            (file) =>
+              file.path.toLowerCase().endsWith(".splat") ||
+              file.path.toLowerCase().endsWith(".ply")
+          )
+          .map((file) => ({
+            name: file.path,
+            url: constructFileUrl(file.path),
+          }));
+
+      // Fetch user-specific files from their folder
+      const userFileList = await manager.ListFolderFile(username);
+      const userSplatFiles = processSplatFiles(userFileList);
+
+      setUserFiles(userSplatFiles);
+    } catch (error) {
+      console.error(`Error fetching files for user ${username}:`, error);
+      // If folder doesn't exist or no files found, just keep userFiles empty
+      setUserFiles([]);
+      setUserError(null); // Don't show error, just show "No user files uploaded yet"
+    } finally {
+      setIsLoadingUserFiles(false);
+    }
+  };
+
+  /**
+   * Load sample files on component mount
    */
   useEffect(() => {
     fetchFiles();
   }, []);
+
+  /**
+   * Load user files when user is authenticated
+   */
+  useEffect(() => {
+    if (isAuthenticated && user?.username) {
+      fetchUserFiles(user.username);
+    } else {
+      // Clear user files if not authenticated
+      setUserFiles([]);
+    }
+  }, [isAuthenticated, user?.username]);
 
   /**
    * Handle file selection
@@ -221,25 +275,71 @@ export const LibraryItem = ({ onSelectModel }: LibraryItemProps) => {
 
       {/* User Library Section */}
       <div className="bg-gray-800/50 rounded-lg p-4 transition-all duration-300 hover:bg-gray-800/70">
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <svg
-            className="w-5 h-5 flex-shrink-0 text-purple-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-            />
-          </svg>
-          User Library
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-white flex items-center gap-2">
+            <svg
+              className="w-5 h-5 flex-shrink-0 text-purple-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              />
+            </svg>
+            User Library
+            {isAuthenticated && user?.username && (
+              <span className="text-xs text-purple-400/70 font-normal">
+                ({user.username})
+              </span>
+            )}
+          </h2>
+          {isAuthenticated && user?.username && (
+            <button
+              onClick={() => fetchUserFiles(user.username)}
+              disabled={isLoadingUserFiles}
+              className={`
+                p-2 rounded-lg transition-all duration-200 
+                ${
+                  isLoadingUserFiles
+                    ? "opacity-50 cursor-not-allowed text-gray-500"
+                    : "text-purple-400 hover:bg-purple-500/20 hover:text-purple-300"
+                }
+              `}
+              title="Refresh user files"
+            >
+              <svg
+                className={`w-4 h-4 flex-shrink-0 ${
+                  isLoadingUserFiles ? "animate-spin" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
 
         <div className="space-y-2 max-h-64 overflow-y-auto">
-          {userFiles.length === 0 ? (
+          {!isAuthenticated ? (
+            <div className="text-gray-400 text-sm italic">
+              Please login to view your files
+            </div>
+          ) : isLoadingUserFiles ? (
+            <LoadingSpinner />
+          ) : userError ? (
+            <div className="text-red-400 text-sm">{userError}</div>
+          ) : userFiles.length === 0 ? (
             <div className="text-gray-400 text-sm italic">
               No user files uploaded yet
             </div>
