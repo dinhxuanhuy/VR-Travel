@@ -1,5 +1,34 @@
+# ========================================
+# Dependencies
+# ========================================
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# ========================================
+# Build Output
+# ========================================
+dist/
+dist-ssr/
+build/
+out/
+*.local
+
+# ========================================
+# Environment Variables
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# ========================================
 # Logs
-logs
+# ========================================
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,25 +36,106 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-*.local
+# ========================================
+# Testing
+# ========================================
+coverage/
+*.lcov
+.nyc_output
+.cache
 
-
-# Editor directories and files
+# ========================================
+# IDE & Editor
+# ========================================
+# VSCode
 .vscode/*
 !.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+!.vscode/settings.json
+!.vscode/launch.json
 
-# Documentation control
-# Ignore all markdown files except the primary README.md
-*.md
-!README.md
-.env
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ========================================
+# OS Files
+# ========================================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# ========================================
+# Temporary Files
+# ========================================
+*.tmp
+*.temp
+*.cache
+*.bak
+*.swp
+*.swo
+*.old
+
+# ========================================
+# Project Specific
+# ========================================
+# Vite
+.vite/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# TypeScript
+*.tsbuildinfo
+
+# Debug
+.debugger
+debug.log
+
+# Local development
+.local/
+local/
+
+# ========================================
+# Optional: Keep Important Docs
+# ========================================
+# If you want to track documentation, uncomment:
+# !README.md
+# !CHANGELOG.md
+# !LICENSE.md
+# !CONTRIBUTING.md

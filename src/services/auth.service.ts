@@ -1,116 +1,25 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+﻿import { api } from './api.service';
+import type { LoginCredentials, RegisterData, AuthResponse, UserResponse } from '../types';
+import { saveToken, getToken, removeToken } from '../utils/storage.utils';
 
-export interface LoginRequest {
-  username: string;
-  password: string;
-}
-
-export interface RegisterRequest {
-  username: string;
-  email: string;
-  password: string;
-}
-
-export interface AuthResponse {
-  success: boolean;
-  message: string;
-  data: {
-    token: string;
-    user: {
-      id: string;
-      email: string;
-      username: string;
-    };
-  };
-}
-
-export interface UserResponse {
-  success: boolean;
-  message: string;
-  data: {
-    id: string;
-    email: string;
-    username: string;
-  };
-}
-
-/**
- * Đăng nhập
- */
-export const login = async (credentials: LoginRequest): Promise<AuthResponse> => {
-  const response = await fetch(`${API_URL}/v1/auth/login`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(credentials),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Đăng nhập thất bại');
-  }
-
-  return response.json();
+export const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
+  return api.post<AuthResponse['data']>('/auth/login', credentials);
 };
 
-/**
- * Đăng ký tài khoản mới
- */
-export const register = async (data: RegisterRequest): Promise<AuthResponse> => {
-  const response = await fetch(`${API_URL}/v1/auth/register`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(data),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Đăng ký thất bại');
-  }
-
-  return response.json();
+export const register = async (data: RegisterData): Promise<AuthResponse> => {
+  return api.post<AuthResponse['data']>('/auth/register', data);
 };
 
-/**
- * Lấy thông tin user hiện tại
- */
-export const getCurrentUser = async (token: string): Promise<UserResponse> => {
-  const response = await fetch(`${API_URL}/v1/auth/me`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.message || 'Không thể lấy thông tin user');
-  }
-
-  return response.json();
+export const getCurrentUser = async (): Promise<UserResponse> => {
+  return api.get<UserResponse['data']>('/auth/me');
 };
 
-/**
- * Lưu token vào localStorage
- */
-export const saveToken = (token: string): void => {
-  localStorage.setItem('auth_token', token);
+export const logout = (): void => {
+  removeToken();
 };
 
-/**
- * Lấy token từ localStorage
- */
-export const getToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+export const isAuthenticated = (): boolean => {
+  return !!getToken();
 };
 
-/**
- * Xóa token khỏi localStorage
- */
-export const removeToken = (): void => {
-  localStorage.removeItem('auth_token');
-};
+export { saveToken, getToken, removeToken };

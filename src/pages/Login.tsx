@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks";
 
 export const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -8,56 +8,48 @@ export const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, loading, error, isAuthenticated, clearError } =
+    useAuth();
   const navigate = useNavigate();
+
+  // Redirect nếu đã authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Clear error khi switch giữa login/register
+  useEffect(() => {
+    clearError();
+  }, [isLogin, clearError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
+    clearError();
 
-    try {
-      if (isLogin) {
-        // Đăng nhập
-        if (!username || !password) {
-          setError("Vui lòng nhập đầy đủ thông tin");
-          setLoading(false);
-          return;
-        }
-        await login(username, password);
-        navigate("/");
-      } else {
-        // Đăng ký
-        if (!username || !email || !password || !confirmPassword) {
-          setError("Vui lòng nhập đầy đủ thông tin");
-          setLoading(false);
-          return;
-        }
-        if (username.length < 6 || username.length > 30) {
-          setError("Username phải từ 6-30 ký tự");
-          setLoading(false);
-          return;
-        }
-        if (password.length < 6) {
-          setError("Mật khẩu phải có ít nhất 6 ký tự");
-          setLoading(false);
-          return;
-        }
-        if (password !== confirmPassword) {
-          setError("Mật khẩu xác nhận không khớp");
-          setLoading(false);
-          return;
-        }
-        await register(username, email, password);
-        navigate("/");
+    if (isLogin) {
+      // Đăng nhập
+      if (!username || !password) {
+        return;
       }
-    } catch (err: any) {
-      setError(err.message || "Có lỗi xảy ra");
-    } finally {
-      setLoading(false);
+      login({ username, password });
+    } else {
+      // Đăng ký
+      if (!username || !email || !password || !confirmPassword) {
+        return;
+      }
+      if (username.length < 6 || username.length > 30) {
+        return;
+      }
+      if (password.length < 6) {
+        return;
+      }
+      if (password !== confirmPassword) {
+        return;
+      }
+      register({ username, email, password });
     }
   };
 
@@ -160,7 +152,7 @@ export const Login = () => {
           <button
             onClick={() => {
               setIsLogin(!isLogin);
-              setError("");
+              clearError();
               setUsername("");
               setEmail("");
               setPassword("");

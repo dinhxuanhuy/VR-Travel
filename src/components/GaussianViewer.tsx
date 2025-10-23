@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import * as SPLAT from "gsplat";
 import { HuggingFaceDatasetManager } from "../context/HuggingFaceDatasetManager";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks";
 
 /**
  * Status types for the viewer

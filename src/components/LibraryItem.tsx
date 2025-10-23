@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { HuggingFaceDatasetManager } from "../context/HuggingFaceDatasetManager";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks";
 
 /**
  * Props for LibraryItem component

@@ -37,7 +37,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const savedToken = authService.getToken();
       if (savedToken) {
         try {
-          const response = await authService.getCurrentUser(savedToken);
+          const response = await authService.getCurrentUser();
           setUser(response.data);
           setToken(savedToken);
         } catch (error) {
