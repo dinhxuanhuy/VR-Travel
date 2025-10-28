@@ -7,6 +7,16 @@ import { createSlice } from '@reduxjs/toolkit';
 import type { ReconstructionState, ReconstructionFile } from '../../types';
 import * as reconActions from '../actions/reconstructionActions';
 
+// Helper function to get step name from progress
+function getStepFromProgress(progress: number): string {
+  if (progress <= 5) return 'Starting';
+  if (progress <= 30) return 'COLMAP Processing';
+  if (progress <= 50) return 'COLMAP Complete';
+  if (progress <= 75) return '3D Reconstruction';
+  if (progress < 100) return 'Finalizing';
+  return 'Complete';
+}
+
 const initialState: ReconstructionState = {
   files: [],
   scenes: [],
@@ -16,7 +26,7 @@ const initialState: ReconstructionState = {
   isRunningReconstruction: false,
   isFetchingScenes: false,
   uploadProgress: 0,
-  reconstructionProgress: 0,
+  reconstructionProgress: null,
   currentWorkflowStep: null,
   error: null,
 };
@@ -120,15 +130,27 @@ const reconstructionSlice = createSlice({
       // ========================================
       .addCase(reconActions.runReconstructionRequest, (state) => {
         state.isRunningReconstruction = true;
-        state.reconstructionProgress = 0;
+        state.reconstructionProgress = {
+          progress: 0,
+          message: 'Starting reconstruction...',
+          currentStep: 'Initializing'
+        };
         state.error = null;
       })
       .addCase(reconActions.runReconstructionProgress, (state, action) => {
-        state.reconstructionProgress = action.payload.progress;
+        state.reconstructionProgress = {
+          progress: action.payload.progress,
+          message: action.payload.status,
+          currentStep: getStepFromProgress(action.payload.progress)
+        };
       })
       .addCase(reconActions.runReconstructionSuccess, (state, action) => {
         state.isRunningReconstruction = false;
-        state.reconstructionProgress = 100;
+        state.reconstructionProgress = {
+          progress: 100,
+          message: 'Reconstruction completed!',
+          currentStep: 'Complete'
+        };
         state.currentScene = action.payload;
         
         // Update scene in list
@@ -140,7 +162,7 @@ const reconstructionSlice = createSlice({
       })
       .addCase(reconActions.runReconstructionFailure, (state, action) => {
         state.isRunningReconstruction = false;
-        state.reconstructionProgress = 0;
+        state.reconstructionProgress = null;
         state.error = action.payload;
       })
 
@@ -184,7 +206,7 @@ const reconstructionSlice = createSlice({
         state.currentScene = action.payload;
         state.files = [];
         state.uploadProgress = 0;
-        state.reconstructionProgress = 0;
+        state.reconstructionProgress = null;
       })
       .addCase(reconActions.workflowFailure, (state, action) => {
         state.currentWorkflowStep = null;
@@ -199,7 +221,7 @@ const reconstructionSlice = createSlice({
         state.isUploadingImages = false;
         state.isRunningReconstruction = false;
         state.uploadProgress = 0;
-        state.reconstructionProgress = 0;
+        state.reconstructionProgress = null;
       })
 
       // ========================================

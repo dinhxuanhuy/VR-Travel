@@ -3,9 +3,51 @@
  */
 
 // API Configuration
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export const API_VERSION = 'v1';
-export const API_BASE_URL = `${API_URL}/${API_VERSION}`;
+export const API_BASE_URL = `${API_URL}/${API_VERSION}`;  // No /api prefix!
+
+// API Endpoints
+export const API_ENDPOINTS = {
+  // Auth
+  AUTH: {
+    REGISTER: '/auth/register',
+    LOGIN: '/auth/login',
+    LOGOUT: '/auth/logout',
+    ME: '/auth/me',
+    REFRESH: '/auth/refresh',
+  },
+  // Scenes
+  SCENES: {
+    CREATE: '/scenes',
+    GET_USER_SCENES: '/scenes/user',
+    GET_BY_ID: (id: string) => `/scenes/detail/${id}`,
+    UPDATE_MODEL: (id: string) => `/scenes/${id}/model`,
+  },
+  // Images
+  IMAGES: {
+    UPLOAD_SINGLE: '/image/upload',
+    UPLOAD_MULTIPLE: '/image/upload-multiple',
+    DELETE: '/image/delete',
+  },
+  // Models
+  MODELS: {
+    UPLOAD: '/model3d/upload',
+    DOWNLOAD: (filename: string) => `/model3d/download/${filename}`,
+  },
+  // COLMAP
+  COLMAP: {
+    RUN: (sceneId: string) => `/colmap/run/${sceneId}`,
+  },
+  // Reconstruction
+  RECONSTRUCTION: {
+    RUN: (sceneId: string) => `/reconstruction/run/${sceneId}`,
+  },
+  // Pipeline (Full workflow)
+  PIPELINE: {
+    RUN: (sceneId: string) => `/pipeline/run/${sceneId}`,
+  },
+} as const;
 
 // Storage Keys
 export const STORAGE_KEYS = {

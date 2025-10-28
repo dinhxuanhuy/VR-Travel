@@ -151,20 +151,101 @@ export const GaussianViewer = ({
         } else {
           // Load from URL
           setModelInfo("Loading default model...");
-          const fileExtension = defaultModelUrl.split(".").pop()?.toLowerCase();
-
-          if (fileExtension === "ply") {
-            await SPLAT.PLYLoader.LoadAsync(
-              defaultModelUrl,
-              sceneRef.current,
-              () => {}
-            );
+          
+          // Check if URL is from our API (needs authentication)
+          const isApiUrl = defaultModelUrl.includes('/v1/ply/');
+          
+          // Determine file extension
+          // For API URLs like /v1/ply/{id}, assume PLY format
+          let fileExtension: string;
+          if (isApiUrl) {
+            fileExtension = "ply";
+            console.log("📊 [Viewer] API URL detected, using PLY format");
           } else {
-            await SPLAT.Loader.LoadAsync(
-              defaultModelUrl,
-              sceneRef.current,
-              () => {}
-            );
+            fileExtension = defaultModelUrl.split(".").pop()?.toLowerCase() || "splat";
+            console.log("📊 [Viewer] File extension from URL:", fileExtension);
+          }
+
+          if (isApiUrl) {
+            // Fetch with authentication for API URLs
+            const token = localStorage.getItem('vr_travel_auth_token');
+            if (!token) {
+              throw new Error('Authentication required. Please login first.');
+            }
+
+            setModelInfo("Downloading model...");
+            console.log("🔹 Fetching PLY from API:", defaultModelUrl);
+            
+            const response = await fetch(defaultModelUrl, {
+              headers: {
+                'Authorization': `Bearer ${token}`
+              }
+            });
+
+            console.log("📊 Response status:", response.status);
+            console.log("📊 Response headers:", {
+              contentType: response.headers.get('content-type'),
+              contentLength: response.headers.get('content-length'),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("❌ API Error Response:", errorText);
+              throw new Error(`Failed to load model: ${response.status} ${response.statusText}`);
+            }
+
+            // Check if response is actually binary (not JSON/HTML)
+            const contentType = response.headers.get('content-type');
+            if (contentType && !contentType.includes('octet-stream')) {
+              const errorText = await response.text();
+              console.error("❌ Unexpected content-type:", contentType);
+              console.error("❌ Response body:", errorText);
+              throw new Error(`Server returned ${contentType} instead of binary PLY file. Check backend logs.`);
+            }
+
+            // Convert to blob and create object URL
+            const blob = await response.blob();
+            console.log("📊 Blob size:", blob.size, "bytes");
+            console.log("📊 Blob type:", blob.type);
+            
+            if (blob.size === 0) {
+              throw new Error('Received empty file from server');
+            }
+
+            const blobUrl = URL.createObjectURL(blob);
+
+            setModelInfo("Processing model...");
+            if (fileExtension === "ply") {
+              await SPLAT.PLYLoader.LoadAsync(
+                blobUrl,
+                sceneRef.current,
+                () => {}
+              );
+            } else {
+              await SPLAT.Loader.LoadAsync(
+                blobUrl,
+                sceneRef.current,
+                () => {}
+              );
+            }
+
+            // Cleanup blob URL
+            URL.revokeObjectURL(blobUrl);
+          } else {
+            // Load directly for public URLs (HuggingFace, etc.)
+            if (fileExtension === "ply") {
+              await SPLAT.PLYLoader.LoadAsync(
+                defaultModelUrl,
+                sceneRef.current,
+                () => {}
+              );
+            } else {
+              await SPLAT.Loader.LoadAsync(
+                defaultModelUrl,
+                sceneRef.current,
+                () => {}
+              );
+            }
           }
 
           setModelInfo(`Model loaded: ${defaultModelUrl.split("/").pop()}`);

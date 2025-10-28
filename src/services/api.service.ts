@@ -25,9 +25,12 @@ export async function apiFetch<T>(
 ): Promise<ApiResponse<T>> {
   const token = getToken();
   
-  const defaultHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
-  };
+  const defaultHeaders: HeadersInit = {};
+
+  // Don't set Content-Type for FormData, let browser set it with boundary
+  if (!(options.body instanceof FormData)) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
@@ -68,19 +71,23 @@ export const api = {
   get: <T>(endpoint: string, options?: RequestInit) =>
     apiFetch<T>(endpoint, { ...options, method: 'GET' }),
 
-  post: <T>(endpoint: string, data?: any, options?: RequestInit) =>
-    apiFetch<T>(endpoint, {
+  post: <T>(endpoint: string, data?: any, options?: RequestInit) => {
+    const isFormData = data instanceof FormData;
+    return apiFetch<T>(endpoint, {
       ...options,
       method: 'POST',
-      body: data ? JSON.stringify(data) : undefined,
-    }),
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+    });
+  },
 
-  put: <T>(endpoint: string, data?: any, options?: RequestInit) =>
-    apiFetch<T>(endpoint, {
+  put: <T>(endpoint: string, data?: any, options?: RequestInit) => {
+    const isFormData = data instanceof FormData;
+    return apiFetch<T>(endpoint, {
       ...options,
       method: 'PUT',
-      body: data ? JSON.stringify(data) : undefined,
-    }),
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+    });
+  },
 
   delete: <T>(endpoint: string, data?: any, options?: RequestInit) =>
     apiFetch<T>(endpoint, { 
@@ -89,10 +96,12 @@ export const api = {
       body: data ? JSON.stringify(data) : undefined,
     }),
 
-  patch: <T>(endpoint: string, data?: any, options?: RequestInit) =>
-    apiFetch<T>(endpoint, {
+  patch: <T>(endpoint: string, data?: any, options?: RequestInit) => {
+    const isFormData = data instanceof FormData;
+    return apiFetch<T>(endpoint, {
       ...options,
       method: 'PATCH',
-      body: data ? JSON.stringify(data) : undefined,
-    }),
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+    });
+  },
 };

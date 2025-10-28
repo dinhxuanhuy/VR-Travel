@@ -15,7 +15,7 @@ import {
 } from 'redux-saga/effects';
 import * as reconActions from '../actions/reconstructionActions';
 import { reconstructionService } from '../../services/reconstruction.service';
-import type { Scene, ReconstructionResult } from '../../types';
+import type { Scene } from '../../types';
 import type { ApiResponse } from '../../services/api.service';
 
 // ========================================
@@ -133,80 +133,124 @@ function* uploadImagesSaga(action: ReturnType<typeof reconActions.uploadImagesRe
 }
 
 /**
- * Worker Saga: Run reconstruction
+ * Worker Saga: Run reconstruction (sử dụng Full Pipeline API với Status Polling)
  */
 function* runReconstructionSaga(action: ReturnType<typeof reconActions.runReconstructionRequest>) {
   const { sceneId } = action.payload;
   const requestId = action.meta.requestId;
 
   try {
-    // Start reconstruction
-    const response: ApiResponse<ReconstructionResult> = yield call(
-      reconstructionService.runReconstruction,
+    console.log('\n========================================');
+    console.log('🚀 [SAGA] BẮT ĐẦU FULL PIPELINE');
+    console.log('========================================');
+    console.log(`📋 Scene ID: ${sceneId}`);
+
+    // Bước 1: Kiểm tra scene readiness
+    console.log('🔍 [SAGA] Bước 1: Kiểm tra scene readiness...');
+    yield put(reconActions.runReconstructionProgress(5, 'Đang kiểm tra scene...', requestId));
+
+    const checkResponse: ApiResponse<any> = yield call(
+      reconstructionService.checkSceneReadiness,
       sceneId
     );
 
-    if (!response.success) {
-      throw new Error(response.message || 'Failed to start reconstruction');
+    if (!checkResponse.success || !checkResponse.data) {
+      throw new Error('Không thể kiểm tra scene');
     }
 
-    console.log(`🚀 Reconstruction started for scene: ${sceneId}`);
+    const sceneStatus = checkResponse.data;
+    console.log('📊 [SAGA] Scene status:', sceneStatus);
+    console.log(`   - Has Images: ${sceneStatus.hasImages} (${sceneStatus.imageCount} ảnh)`);
+    console.log(`   - Has COLMAP: ${sceneStatus.hasColmap}`);
+    console.log(`   - Can Run: ${sceneStatus.canRunColmap}`);
+    console.log(`   - Next Step: ${sceneStatus.nextStep}`);
 
-    // Poll reconstruction status
-    yield call(pollReconstructionStatus, sceneId, requestId);
+    if (!sceneStatus.hasImages) {
+      throw new Error('Scene chưa có ảnh. Vui lòng upload ảnh trước.');
+    }
+
+    // Bước 2: Start Full Pipeline (không đợi response)
+    console.log('\n🔄 [SAGA] Bước 2: Khởi động Full Pipeline (COLMAP → 3D Reconstruction)...');
+    yield put(reconActions.runReconstructionProgress(10, 'Đang khởi động pipeline...', requestId));
+
+    const startTime = Date.now();
+    
+    // Call Full Pipeline API (fire and forget - sẽ chạy background)
+    // Không cần await vì ta sẽ poll status
+    reconstructionService.runFullPipeline(sceneId).catch((err) => {
+      console.error('❌ Pipeline error:', err);
+    });
+
+    // Bước 3: Poll status cho đến khi complete hoặc failed
+    console.log('📊 [SAGA] Bước 3: Bắt đầu polling status (mỗi 20 giây)...\n');
+    
+    let isComplete = false;
+    let lastProgress = 10;
+
+    while (!isComplete) {
+      // Delay 20 seconds giữa các lần poll
+      yield delay(20000);
+
+      try {
+        // Sử dụng getSceneById để lấy detail với progress
+        const sceneResponse: ApiResponse<any> = yield call(
+          reconstructionService.getSceneById,
+          sceneId
+        );
+
+        if (sceneResponse.success && sceneResponse.data) {
+          const scene = sceneResponse.data;
+          
+          console.log(`📊 [POLLING] Status: ${scene.status} | Progress: ${scene.progress}% | ${scene.progressMessage}`);
+
+          // Update progress
+          if (scene.progress !== lastProgress) {
+            yield put(reconActions.runReconstructionProgress(
+              scene.progress,
+              scene.progressMessage,
+              requestId
+            ));
+            lastProgress = scene.progress;
+          }
+
+          // Check if complete
+          if (scene.status === 'completed') {
+            isComplete = true;
+            const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+            console.log('\n✅ [SAGA] PIPELINE HOÀN TẤT!');
+            console.log('========================================');
+            console.log(`⏱️  Tổng thời gian: ${duration}s`);
+            console.log(`📊 Final Status: ${scene.status}`);
+            console.log(`📊 Progress: ${scene.progress}%`);
+            console.log('========================================\n');
+
+            yield put(reconActions.runReconstructionSuccess(scene, requestId));
+            console.log(`✅ Reconstruction completed for scene: ${sceneId}`);
+          } else if (scene.status === 'failed') {
+            isComplete = true;
+            throw new Error('Pipeline thất bại: ' + scene.progressMessage);
+          }
+        } else {
+          console.warn('⚠️ [POLLING] Không lấy được scene detail, retry...');
+        }
+      } catch (pollError: any) {
+        console.error('❌ [POLLING] Lỗi khi poll status:', pollError.message);
+        // Nếu poll error, vẫn tiếp tục thử (có thể là network glitch)
+        // Nhưng nếu quá nhiều lần lỗi thì nên stop
+      }
+    }
+
   } catch (error: any) {
+    console.error('\n========================================');
+    console.error('❌ [SAGA] PIPELINE FAILED');
+    console.error('========================================');
+    console.error('Error:', error.message);
+    console.error('========================================\n');
+
     const errorMessage = error.message || 'Failed to run reconstruction';
     yield put(reconActions.runReconstructionFailure(errorMessage, sceneId, requestId));
     console.error(`❌ Reconstruction failed for ${sceneId}:`, errorMessage);
-  }
-}
-
-/**
- * Helper Saga: Poll reconstruction status
- */
-function* pollReconstructionStatus(sceneId: string, requestId?: string) {
-  let progress = 0;
-
-  while (true) {
-    try {
-      // Fetch scene status
-      const response: ApiResponse<Scene> = yield call(
-        reconstructionService.getSceneById,
-        sceneId
-      );
-
-      if (response.success && response.data) {
-        const scene = response.data;
-        const { status } = scene;
-
-        // Update progress based on status
-        if (status === 'reconstruction_processing') {
-          progress = Math.min(progress + 10, 90);
-          yield put(reconActions.runReconstructionProgress(progress, status, requestId));
-        } else if (status === 'reconstruction_completed' || status === 'completed') {
-          yield put(reconActions.runReconstructionProgress(100, status, requestId));
-          yield put(reconActions.runReconstructionSuccess(scene, requestId));
-          console.log(`✅ Reconstruction completed for scene: ${sceneId}`);
-          return;
-        } else if (status === 'failed') {
-          throw new Error('Reconstruction failed');
-        }
-
-        // Wait before next poll
-        yield delay(5000); // Poll every 5 seconds
-      } else {
-        throw new Error(response.message || 'Failed to check status');
-      }
-    } catch (error: any) {
-      yield put(
-        reconActions.runReconstructionFailure(
-          error.message || 'Reconstruction status check failed',
-          sceneId,
-          requestId
-        )
-      );
-      return;
-    }
   }
 }
 

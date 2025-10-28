@@ -15,11 +15,14 @@ export interface Scene {
   description?: string;
   ownerId: string;
   imageFilenames?: string[];
-  modelId?: string;
-  colmapId?: string;
+  modelFile?: string;  // Changed from modelId to modelFile (URL/path)
+  colmapOutputPath?: string;  // Path to COLMAP results
+  plyFilePath?: string;  // Path to PLY file for GaussianViewer
   imageCount?: number;
-  status: 'idle' | 'processing' | 'colmap_processing' | 'colmap_completed' | 
-          'reconstruction_processing' | 'reconstruction_completed' | 'completed' | 'failed';
+  status: 'idle' | 'uploading' | 'uploaded' | 
+          'colmap_processing' | 'colmap_completed' | 'colmap_failed' |
+          'reconstruction_processing' | 'reconstruction_completed' | 'reconstruction_failed' |
+          'completed' | 'failed';
   createdAt: string;
   updatedAt: string;
 }
@@ -56,7 +59,11 @@ export interface ReconstructionState {
   
   // Progress tracking
   uploadProgress: number;
-  reconstructionProgress: number;
+  reconstructionProgress: {
+    progress: number;
+    message: string;
+    currentStep: string;
+  } | null;
   
   // Workflow tracking
   currentWorkflowStep: string | null;
